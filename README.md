@@ -20,7 +20,17 @@ Tailwind, and Firebase.
 
 ## Deploying to GitHub Pages
 
-1. Push this repo to GitHub.
-2. `npm run deploy` — builds the app and publishes `dist/` to the `gh-pages` branch via the `gh-pages` package.
-3. In the GitHub repo settings, under **Pages**, set the source to the `gh-pages` branch.
-4. The app uses `HashRouter`, so all routes work correctly on GitHub Pages without server-side rewrite rules.
+**Automatic:** every push to `master` builds and deploys via
+[`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml). It needs
+the same six `VITE_FIREBASE_*` values from `.env.example` set as repo
+secrets (Settings → Secrets and variables → Actions), then publishes
+`dist/` to the `gh-pages` branch automatically. Watch progress under the
+repo's **Actions** tab.
+
+**Manual (fallback):** `npm run deploy` builds locally (using your local
+`.env`) and publishes `dist/` to the `gh-pages` branch via the `gh-pages`
+package.
+
+Either way, in the GitHub repo settings under **Pages**, set the source to
+the `gh-pages` branch. The app uses `HashRouter`, so all routes work
+correctly on GitHub Pages without server-side rewrite rules.
