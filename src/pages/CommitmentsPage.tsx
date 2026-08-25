@@ -59,18 +59,23 @@ export default function CommitmentsPage() {
           )}
 
           {editing && (
-            <div className="mt-4">
-              <CommitmentForm
-                key={editing === 'new' ? 'new' : editing.id}
-                categories={categories}
-                initial={editing === 'new' ? undefined : editing}
-                onCancel={() => setEditing(null)}
-                onSubmit={async (input) => {
-                  if (editing === 'new') await addCommitment(input)
-                  else await updateCommitment(editing.id, input)
-                  setEditing(null)
-                }}
-              />
+            <div className="fixed inset-0 bg-ink/40 flex items-center justify-center z-50">
+              <div className="bg-paper border border-line rounded p-6 max-w-sm w-full">
+                <h3 className="font-display text-base mb-4">
+                  {editing === 'new' ? 'Add Commitment' : 'Edit Commitment'}
+                </h3>
+                <CommitmentForm
+                  key={editing === 'new' ? 'new' : editing.id}
+                  categories={categories}
+                  initial={editing === 'new' ? undefined : editing}
+                  onCancel={() => setEditing(null)}
+                  onSubmit={async (input) => {
+                    if (editing === 'new') await addCommitment(input)
+                    else await updateCommitment(editing.id, input)
+                    setEditing(null)
+                  }}
+                />
+              </div>
             </div>
           )}
         </section>
