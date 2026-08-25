@@ -19,7 +19,7 @@ function categoriesRef(uid: string) {
 
 export function useCategories(uid: string) {
   const categoriesQuery = query(categoriesRef(uid), orderBy('sortOrder')) as unknown as Query<Category>
-  const [categories, loading, error] = useCollectionData<Category>(categoriesQuery, { idField: 'id' } as unknown as any)
+  const [categories, loading, error] = useCollectionData<Category>(categoriesQuery)
 
   async function addCategory(name: string) {
     const count = categories?.length ?? 0
