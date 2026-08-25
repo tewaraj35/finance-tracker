@@ -1252,7 +1252,7 @@ git commit -m "feat: add PaidStamp signature status component"
 
 **Interfaces:**
 - Consumes: `PaidStamp` (Task 7), `LineItem` type (Task 3).
-- Produces: `LineItem` component (`LineItemRow` to avoid name clash with the `LineItem` type), props `{ item: LineItemType; onToggleStatus: (itemId: string) => void }` — consumed by `LedgerSection` (Task 9).
+- Produces: `LineItem` component (`LineItemRow` to avoid name clash with the `LineItem` type), props `{ item: LineItemType; onToggleStatus: (itemId: string) => void; onAmountChange: (itemId: string, amount: number) => void }` — consumed by `LedgerSection` (Task 9). The amount is an editable field (spec: line items support a per-month amount override), not static text.
 
 - [ ] **Step 1: Write the failing tests — `src/components/ledger/LineItem.test.tsx`**
 
@@ -1274,24 +1274,45 @@ const item: LineItem = {
 }
 
 describe('LineItemRow', () => {
-  it('renders the name, description, and formatted amount', () => {
-    render(<LineItemRow item={item} onToggleStatus={vi.fn()} />)
+  it('renders the name, description, and amount input', () => {
+    render(<LineItemRow item={item} onToggleStatus={vi.fn()} onAmountChange={vi.fn()} />)
     expect(screen.getByText('Car')).toBeInTheDocument()
     expect(screen.getByText('Ambank')).toBeInTheDocument()
-    expect(screen.getByText('RM 599.00')).toBeInTheDocument()
+    expect(screen.getByLabelText(/amount/i)).toHaveValue(599)
   })
 
   it('omits the description element when there is none', () => {
-    render(<LineItemRow item={{ ...item, description: '' }} onToggleStatus={vi.fn()} />)
+    render(<LineItemRow item={{ ...item, description: '' }} onToggleStatus={vi.fn()} onAmountChange={vi.fn()} />)
     expect(screen.queryByText('Ambank')).not.toBeInTheDocument()
+  })
+
+  it('shows a one-off badge for one-off items', () => {
+    render(<LineItemRow item={{ ...item, isOneOff: true }} onToggleStatus={vi.fn()} onAmountChange={vi.fn()} />)
+    expect(screen.getByText('one-off')).toBeInTheDocument()
+  })
+
+  it('does not show a one-off badge for template items', () => {
+    render(<LineItemRow item={item} onToggleStatus={vi.fn()} onAmountChange={vi.fn()} />)
+    expect(screen.queryByText('one-off')).not.toBeInTheDocument()
   })
 
   it('calls onToggleStatus with the item id when the stamp is clicked', async () => {
     const onToggleStatus = vi.fn()
     const user = userEvent.setup()
-    render(<LineItemRow item={item} onToggleStatus={onToggleStatus} />)
+    render(<LineItemRow item={item} onToggleStatus={onToggleStatus} onAmountChange={vi.fn()} />)
     await user.click(screen.getByText('PAID'))
     expect(onToggleStatus).toHaveBeenCalledWith('c1')
+  })
+
+  it('calls onAmountChange with the parsed value when the amount input loses focus', async () => {
+    const onAmountChange = vi.fn()
+    const user = userEvent.setup()
+    render(<LineItemRow item={item} onToggleStatus={vi.fn()} onAmountChange={onAmountChange} />)
+    const input = screen.getByLabelText(/amount/i)
+    await user.clear(input)
+    await user.type(input, '650')
+    await user.tab()
+    expect(onAmountChange).toHaveBeenCalledWith('c1', 650)
   })
 })
 ```
@@ -1310,21 +1331,30 @@ import { PaidStamp } from './PaidStamp'
 export interface LineItemRowProps {
   item: LineItem
   onToggleStatus: (itemId: string) => void
+  onAmountChange: (itemId: string, amount: number) => void
 }
 
-function formatCurrency(amount: number): string {
-  return `RM ${amount.toFixed(2)}`
-}
-
-export function LineItemRow({ item, onToggleStatus }: LineItemRowProps) {
+export function LineItemRow({ item, onToggleStatus, onAmountChange }: LineItemRowProps) {
   return (
     <div className="flex items-center justify-between py-1.5 border-t border-dashed border-line first:border-t-0">
       <span className="text-sm">
         {item.name}
+        {item.isOneOff && <span className="text-[10px] text-brass ml-1.5 align-middle">one-off</span>}
         {item.description && <span className="block text-xs text-ink-soft">{item.description}</span>}
       </span>
       <span className="flex items-center gap-2.5">
-        <span className="font-mono text-sm">{formatCurrency(item.amount)}</span>
+        <span className="font-mono text-sm text-ink-soft">RM</span>
+        <label>
+          <span className="sr-only">Amount</span>
+          <input
+            aria-label="Amount"
+            type="number"
+            step="0.01"
+            defaultValue={item.amount}
+            onBlur={(event) => onAmountChange(item.id, Number(event.target.value))}
+            className="font-mono text-sm w-20 text-right bg-transparent border-b border-transparent focus:border-line focus-visible:ring-2 focus-visible:ring-brass"
+          />
+        </label>
         <PaidStamp status={item.status} onClick={() => onToggleStatus(item.id)} />
       </span>
     </div>
@@ -1335,7 +1365,7 @@ export function LineItemRow({ item, onToggleStatus }: LineItemRowProps) {
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npm run test:run -- src/components/ledger/LineItem.test.tsx`
-Expected: PASS — 3 tests passed.
+Expected: PASS — 6 tests passed.
 
 - [ ] **Step 5: Commit**
 
@@ -1354,7 +1384,7 @@ git commit -m "feat: add LineItem row component"
 
 **Interfaces:**
 - Consumes: `LineItemRow` (Task 8), `computeCategorySubtotals` is NOT used here — the subtotal is passed in as a prop so this component stays presentational.
-- Produces: `LedgerSection` component, props `{ categoryName: string; items: LineItemType[]; subtotal: number; onToggleStatus: (itemId: string) => void }` — consumed by `DashboardPage` (Task 14).
+- Produces: `LedgerSection` component, props `{ categoryName: string; items: LineItemType[]; subtotal: number; onToggleStatus: (itemId: string) => void; onAmountChange: (itemId: string, amount: number) => void }` — consumed by `DashboardPage` (Task 14).
 
 - [ ] **Step 1: Write the failing tests — `src/components/ledger/LedgerSection.test.tsx`**
 
@@ -1371,7 +1401,7 @@ const items: LineItem[] = [
 
 describe('LedgerSection', () => {
   it('renders the category name, subtotal, and each item', () => {
-    render(<LedgerSection categoryName="Bank Loans" items={items} subtotal={1750} onToggleStatus={vi.fn()} />)
+    render(<LedgerSection categoryName="Bank Loans" items={items} subtotal={1750} onToggleStatus={vi.fn()} onAmountChange={vi.fn()} />)
     expect(screen.getByText('Bank Loans')).toBeInTheDocument()
     expect(screen.getByText('RM 1750.00')).toBeInTheDocument()
     expect(screen.getByText('Car')).toBeInTheDocument()
@@ -1379,7 +1409,7 @@ describe('LedgerSection', () => {
   })
 
   it('renders nothing for items when the list is empty', () => {
-    render(<LedgerSection categoryName="Bills" items={[]} subtotal={0} onToggleStatus={vi.fn()} />)
+    render(<LedgerSection categoryName="Bills" items={[]} subtotal={0} onToggleStatus={vi.fn()} onAmountChange={vi.fn()} />)
     expect(screen.getByText('Bills')).toBeInTheDocument()
     expect(screen.getByText('RM 0.00')).toBeInTheDocument()
   })
@@ -1402,9 +1432,10 @@ export interface LedgerSectionProps {
   items: LineItem[]
   subtotal: number
   onToggleStatus: (itemId: string) => void
+  onAmountChange: (itemId: string, amount: number) => void
 }
 
-export function LedgerSection({ categoryName, items, subtotal, onToggleStatus }: LedgerSectionProps) {
+export function LedgerSection({ categoryName, items, subtotal, onToggleStatus, onAmountChange }: LedgerSectionProps) {
   return (
     <section className="py-3.5 border-t border-line first:border-t-0">
       <div className="flex justify-between font-display font-semibold text-sm uppercase tracking-wide text-ink-soft mb-1.5">
@@ -1412,7 +1443,7 @@ export function LedgerSection({ categoryName, items, subtotal, onToggleStatus }:
         <span className="font-mono normal-case tracking-normal">RM {subtotal.toFixed(2)}</span>
       </div>
       {items.map((item) => (
-        <LineItemRow key={item.id} item={item} onToggleStatus={onToggleStatus} />
+        <LineItemRow key={item.id} item={item} onToggleStatus={onToggleStatus} onAmountChange={onAmountChange} />
       ))}
     </section>
   )
@@ -1797,7 +1828,7 @@ git commit -m "feat: add months Firestore hook with idempotent snapshot generati
 - Create: `src/components/ledger/EmptyState.tsx`
 
 **Interfaces:**
-- Consumes: `useAuth` (Task 5), `useCategories` (Task 11), `useCommitments` (Task 12), `useMonth` (Task 13), `SummaryHero` (Task 10), `LedgerSection` (Task 9), `getMonthId` (Task 3), `AppShell` (Task 6).
+- Consumes: `useAuth` (Task 5), `useCategories` (Task 11), `useCommitments` (Task 12), `useMonth` (Task 13, including `updateItemAmount` and `addOneOffItem` — both must be wired into the UI here, since no other task does), `SummaryHero` (Task 10), `LedgerSection` (Task 9), `getMonthId` (Task 3), `AppShell` (Task 6).
 - Produces: `MonthSwitcher` component, props `{ monthId: string; onChange: (monthId: string) => void }`; `EmptyState` component, props `{ message: string; actionLabel: string; onAction: () => void }` — both usable elsewhere (e.g. `EmptyState` reused in Task 15 for an empty commitments list).
 
 - [ ] **Step 1: Write the failing tests — `src/components/ledger/MonthSwitcher.test.tsx`**
@@ -1911,7 +1942,7 @@ export function EmptyState({ message, actionLabel, onAction }: EmptyStateProps) 
 - [ ] **Step 6: Implement the container `src/pages/DashboardPage.tsx`** (not unit tested — wires Firestore hooks; verify manually per Step 7)
 
 ```tsx
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { AppShell } from '../components/layout/AppShell'
@@ -1929,10 +1960,22 @@ export default function DashboardPage() {
   const uid = user!.uid
   const navigate = useNavigate()
   const [monthId, setMonthId] = useState(() => getMonthId(new Date()))
+  const [showAddItem, setShowAddItem] = useState(false)
+  const [newItemName, setNewItemName] = useState('')
+  const [newItemAmount, setNewItemAmount] = useState('')
+  const [newItemCategoryId, setNewItemCategoryId] = useState('')
+  const [newItemDescription, setNewItemDescription] = useState('')
 
   const { categories, loading: categoriesLoading } = useCategories(uid)
   const { commitments, loading: commitmentsLoading } = useCommitments(uid)
-  const { month, loading: monthLoading, setSalary, toggleItemStatus } = useMonth(uid, monthId, commitments)
+  const {
+    month,
+    loading: monthLoading,
+    setSalary,
+    toggleItemStatus,
+    updateItemAmount,
+    addOneOffItem,
+  } = useMonth(uid, monthId, commitments)
 
   if (categoriesLoading || commitmentsLoading || monthLoading) {
     return (
@@ -1956,6 +1999,20 @@ export default function DashboardPage() {
 
   const items = month?.items ?? []
   const subtotals = computeCategorySubtotals(items)
+
+  async function handleAddOneOff(event: FormEvent) {
+    event.preventDefault()
+    await addOneOffItem({
+      name: newItemName,
+      amount: Number(newItemAmount),
+      categoryId: newItemCategoryId || categories[0].id,
+      description: newItemDescription,
+    })
+    setNewItemName('')
+    setNewItemAmount('')
+    setNewItemDescription('')
+    setShowAddItem(false)
+  }
 
   return (
     <AppShell>
@@ -1981,8 +2038,67 @@ export default function DashboardPage() {
             items={items.filter((item) => item.categoryId === category.id)}
             subtotal={subtotals[category.id] ?? 0}
             onToggleStatus={toggleItemStatus}
+            onAmountChange={updateItemAmount}
           />
         ))}
+
+        <div className="pt-4">
+          {!showAddItem ? (
+            <button type="button" onClick={() => setShowAddItem(true)} className="text-sm text-brass font-medium">
+              + Add one-off expense
+            </button>
+          ) : (
+            <form onSubmit={handleAddOneOff} className="flex flex-col gap-2 border border-line rounded p-4 mt-2">
+              <input
+                aria-label="One-off item name"
+                placeholder="What's this for?"
+                value={newItemName}
+                onChange={(event) => setNewItemName(event.target.value)}
+                required
+                className="border border-line rounded px-2 py-1 bg-paper text-sm"
+              />
+              <div className="flex gap-2">
+                <input
+                  aria-label="One-off item amount"
+                  type="number"
+                  step="0.01"
+                  placeholder="Amount"
+                  value={newItemAmount}
+                  onChange={(event) => setNewItemAmount(event.target.value)}
+                  required
+                  className="border border-line rounded px-2 py-1 bg-paper text-sm w-28 font-mono"
+                />
+                <select
+                  aria-label="One-off item category"
+                  value={newItemCategoryId || categories[0].id}
+                  onChange={(event) => setNewItemCategoryId(event.target.value)}
+                  className="border border-line rounded px-2 py-1 bg-paper text-sm flex-1"
+                >
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <input
+                aria-label="One-off item description"
+                placeholder="Description (optional)"
+                value={newItemDescription}
+                onChange={(event) => setNewItemDescription(event.target.value)}
+                className="border border-line rounded px-2 py-1 bg-paper text-sm"
+              />
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setShowAddItem(false)} className="px-3 py-1.5 text-sm">
+                  Cancel
+                </button>
+                <button type="submit" className="bg-brass text-paper px-3 py-1.5 rounded text-sm">
+                  Add expense
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
       </div>
     </AppShell>
   )
@@ -1991,7 +2107,7 @@ export default function DashboardPage() {
 
 - [ ] **Step 7: Manually verify the full dashboard flow**
 
-Run `npm run dev`, sign in, and confirm: categories render as sections with correct subtotals; clicking a stamp toggles PAID/PENDING and persists (reload the page to confirm); editing the salary field persists; the month switcher moves between months and each new month clones current commitments as PENDING; the empty state appears for a fresh account with no categories/commitments yet.
+Run `npm run dev`, sign in, and confirm: categories render as sections with correct subtotals; clicking a stamp toggles PAID/PENDING and persists (reload the page to confirm); editing an individual item's amount persists (blur the field, reload to confirm); editing the salary field persists; adding a one-off expense creates it with a "one-off" badge in the right category, persists after reload, and does not appear in Manage Commitments (Task 15) since it was never added to the template; the month switcher moves between months and each new month clones current commitments as PENDING; the empty state appears for a fresh account with no categories/commitments yet.
 
 - [ ] **Step 8: Commit**
 
@@ -2014,8 +2130,8 @@ git commit -m "feat: build dashboard page with ledger sections and month switchi
 - Create: `src/components/commitments/ConfirmDialog.test.tsx`
 
 **Interfaces:**
-- Consumes: `useCategories` (Task 11), `useCommitments` (Task 12), `EmptyState` (Task 14).
-- Produces: `CategoryManager` props `{ categories: Category[]; onAdd: (name: string) => void; onRename: (id: string, name: string) => void; onDelete: (id: string) => void }`; `CommitmentForm` props `{ categories: Category[]; initial?: Partial<Commitment>; onSubmit: (input: Omit<Commitment, 'id'>) => void; onCancel: () => void }`; `ConfirmDialog` props `{ open: boolean; message: string; onConfirm: () => void; onCancel: () => void }`.
+- Consumes: `useCategories` (Task 11, including `reorderCategories` — wired here since no other task uses it), `useCommitments` (Task 12), `EmptyState` (Task 14).
+- Produces: `CategoryManager` props `{ categories: Category[]; onAdd: (name: string) => void; onRename: (id: string, name: string) => void; onDelete: (id: string) => void; onReorder: (orderedIds: string[]) => void }`; `CommitmentForm` props `{ categories: Category[]; initial?: Partial<Commitment>; onSubmit: (input: Omit<Commitment, 'id'>) => void; onCancel: () => void }`; `ConfirmDialog` props `{ open: boolean; message: string; onConfirm: () => void; onCancel: () => void }`.
 
 - [ ] **Step 1: Write the failing tests — `src/components/commitments/ConfirmDialog.test.tsx`**
 
@@ -2110,7 +2226,7 @@ const categories: Category[] = [
 
 describe('CategoryManager', () => {
   it('renders each category name', () => {
-    render(<CategoryManager categories={categories} onAdd={vi.fn()} onRename={vi.fn()} onDelete={vi.fn()} />)
+    render(<CategoryManager categories={categories} onAdd={vi.fn()} onRename={vi.fn()} onDelete={vi.fn()} onReorder={vi.fn()} />)
     expect(screen.getByText('Bank Loans')).toBeInTheDocument()
     expect(screen.getByText('Bills')).toBeInTheDocument()
   })
@@ -2118,7 +2234,7 @@ describe('CategoryManager', () => {
   it('calls onAdd with the typed name when the add form is submitted', async () => {
     const onAdd = vi.fn()
     const user = userEvent.setup()
-    render(<CategoryManager categories={categories} onAdd={onAdd} onRename={vi.fn()} onDelete={vi.fn()} />)
+    render(<CategoryManager categories={categories} onAdd={onAdd} onRename={vi.fn()} onDelete={vi.fn()} onReorder={vi.fn()} />)
     await user.type(screen.getByLabelText(/new category/i), 'Insurances')
     await user.click(screen.getByRole('button', { name: /add category/i }))
     expect(onAdd).toHaveBeenCalledWith('Insurances')
@@ -2127,9 +2243,25 @@ describe('CategoryManager', () => {
   it('calls onDelete with the category id when its delete button is clicked', async () => {
     const onDelete = vi.fn()
     const user = userEvent.setup()
-    render(<CategoryManager categories={categories} onAdd={vi.fn()} onRename={vi.fn()} onDelete={onDelete} />)
+    render(<CategoryManager categories={categories} onAdd={vi.fn()} onRename={vi.fn()} onDelete={onDelete} onReorder={vi.fn()} />)
     await user.click(screen.getAllByRole('button', { name: /delete/i })[0])
     expect(onDelete).toHaveBeenCalledWith('cat1')
+  })
+
+  it('calls onReorder with the swapped id order when moving a category down', async () => {
+    const onReorder = vi.fn()
+    const user = userEvent.setup()
+    render(<CategoryManager categories={categories} onAdd={vi.fn()} onRename={vi.fn()} onDelete={vi.fn()} onReorder={onReorder} />)
+    await user.click(screen.getAllByRole('button', { name: /move down/i })[0])
+    expect(onReorder).toHaveBeenCalledWith(['cat2', 'cat1'])
+  })
+
+  it('disables moving the first category up and the last category down', () => {
+    render(<CategoryManager categories={categories} onAdd={vi.fn()} onRename={vi.fn()} onDelete={vi.fn()} onReorder={vi.fn()} />)
+    const upButtons = screen.getAllByRole('button', { name: /move up/i })
+    const downButtons = screen.getAllByRole('button', { name: /move down/i })
+    expect(upButtons[0]).toBeDisabled()
+    expect(downButtons[downButtons.length - 1]).toBeDisabled()
   })
 })
 ```
@@ -2150,9 +2282,10 @@ export interface CategoryManagerProps {
   onAdd: (name: string) => void
   onRename: (id: string, name: string) => void
   onDelete: (id: string) => void
+  onReorder: (orderedIds: string[]) => void
 }
 
-export function CategoryManager({ categories, onAdd, onRename, onDelete }: CategoryManagerProps) {
+export function CategoryManager({ categories, onAdd, onRename, onDelete, onReorder }: CategoryManagerProps) {
   const [newName, setNewName] = useState('')
 
   function handleAdd(event: FormEvent) {
@@ -2162,10 +2295,31 @@ export function CategoryManager({ categories, onAdd, onRename, onDelete }: Categ
     setNewName('')
   }
 
+  function move(index: number, delta: number) {
+    const orderedIds = categories.map((category) => category.id)
+    const target = index + delta
+    ;[orderedIds[index], orderedIds[target]] = [orderedIds[target], orderedIds[index]]
+    onReorder(orderedIds)
+  }
+
   return (
     <div className="flex flex-col gap-2">
-      {categories.map((category) => (
+      {categories.map((category, index) => (
         <div key={category.id} className="flex items-center justify-between gap-2 py-1.5 border-t border-line first:border-t-0">
+          <div className="flex flex-col">
+            <button type="button" aria-label="Move up" disabled={index === 0} onClick={() => move(index, -1)} className="text-xs disabled:opacity-30">
+              ↑
+            </button>
+            <button
+              type="button"
+              aria-label="Move down"
+              disabled={index === categories.length - 1}
+              onClick={() => move(index, 1)}
+              className="text-xs disabled:opacity-30"
+            >
+              ↓
+            </button>
+          </div>
           <input
             defaultValue={category.name}
             onBlur={(event) => onRename(category.id, event.target.value)}
@@ -2199,7 +2353,7 @@ export function CategoryManager({ categories, onAdd, onRename, onDelete }: Categ
 - [ ] **Step 8: Run tests to verify they pass**
 
 Run: `npm run test:run -- src/components/commitments/CategoryManager.test.tsx`
-Expected: PASS — 3 tests passed.
+Expected: PASS — 5 tests passed.
 
 - [ ] **Step 9: Write the failing tests — `src/components/commitments/CommitmentForm.test.tsx`**
 
@@ -2338,7 +2492,7 @@ import type { Commitment } from '../types/models'
 export default function CommitmentsPage() {
   const { user } = useAuth()
   const uid = user!.uid
-  const { categories, addCategory, renameCategory, deleteCategory } = useCategories(uid)
+  const { categories, addCategory, renameCategory, deleteCategory, reorderCategories } = useCategories(uid)
   const { commitments, addCommitment, updateCommitment, deleteCommitment } = useCommitments(uid)
   const [editing, setEditing] = useState<Commitment | 'new' | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
@@ -2348,7 +2502,13 @@ export default function CommitmentsPage() {
       <div className="max-w-2xl mx-auto flex flex-col gap-8">
         <section>
           <h2 className="font-display text-lg mb-3">Categories</h2>
-          <CategoryManager categories={categories} onAdd={addCategory} onRename={renameCategory} onDelete={deleteCategory} />
+          <CategoryManager
+            categories={categories}
+            onAdd={addCategory}
+            onRename={renameCategory}
+            onDelete={deleteCategory}
+            onReorder={reorderCategories}
+          />
         </section>
 
         <section>
@@ -2411,7 +2571,7 @@ export default function CommitmentsPage() {
 
 - [ ] **Step 14: Manually verify the full commitments management flow**
 
-Run `npm run dev`, sign in, and confirm: adding, renaming, and deleting a category works and reflects immediately; adding, editing, and deleting a commitment works; deleting a commitment prompts the confirm dialog and, after confirming, doesn't remove it from an already-generated month snapshot (check the Dashboard for the current month still shows it).
+Run `npm run dev`, sign in, and confirm: adding, renaming, reordering (↑/↓), and deleting a category works and reflects immediately, including the new order persisting after a page reload; adding, editing, and deleting a commitment works; deleting a commitment prompts the confirm dialog and, after confirming, doesn't remove it from an already-generated month snapshot (check the Dashboard for the current month still shows it).
 
 - [ ] **Step 15: Commit**
 
