@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper: #F2F5EC;
+  --ink: #1F3B2C;
+  --ink-soft: #5C7268;
+  --brass: #B8863B;
+  --stamp-red: #B23A2E;
+  --paid: #2F6B4F;
+  --line: #D3DCC9;
+}
+
+.dark {
+  --paper: #14201A;
+  --ink: #E9EFE6;
+  --ink-soft: #8FA396;
+  --brass: #D9A857;
+  --stamp-red: #E2645A;
+  --paid: #5FBE8D;
+  --line: #2A382F;
+}
+
+body {
+  background-color: var(--paper);
+  color: var(--ink);
+}
