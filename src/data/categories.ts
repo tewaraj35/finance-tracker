@@ -9,7 +9,7 @@ import {
   writeBatch,
   type Query,
 } from 'firebase/firestore'
-import { useCollectionData } from 'react-firebase-hooks/firestore'
+import { useCollection } from 'react-firebase-hooks/firestore'
 import { db } from '../firebase/config'
 import type { Category } from '../types/models'
 
@@ -18,8 +18,9 @@ function categoriesRef(uid: string) {
 }
 
 export function useCategories(uid: string) {
-  const categoriesQuery = query(categoriesRef(uid), orderBy('sortOrder')) as unknown as Query<Category>
-  const [categories, loading, error] = useCollectionData<Category>(categoriesQuery)
+  const categoriesQuery = query(categoriesRef(uid), orderBy('sortOrder')) as unknown as Query<Omit<Category, 'id'>>
+  const [snapshot, loading, error] = useCollection(categoriesQuery)
+  const categories: Category[] = snapshot?.docs.map((d) => ({ id: d.id, ...d.data() })) ?? []
 
   async function addCategory(name: string) {
     const count = categories?.length ?? 0
@@ -42,5 +43,5 @@ export function useCategories(uid: string) {
     await deleteDoc(doc(db, 'users', uid, 'categories', id))
   }
 
-  return { categories: categories ?? [], loading, error, addCategory, renameCategory, reorderCategories, deleteCategory }
+  return { categories, loading, error, addCategory, renameCategory, reorderCategories, deleteCategory }
 }
