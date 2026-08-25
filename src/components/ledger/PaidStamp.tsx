@@ -11,7 +11,7 @@ export function PaidStamp({ status, onClick }: PaidStampProps) {
     <button
       type="button"
       onClick={onClick}
-      className={`font-mono text-[10px] font-semibold tracking-wide rounded px-2 py-0.5 -rotate-6 ${
+      className={`font-mono text-[10px] font-semibold tracking-wide rounded px-2 py-0.5 -rotate-6 focus-visible:ring-2 focus-visible:ring-brass ${
         isPaid ? 'border-2 border-paid text-paid' : 'border-2 border-dashed border-stamp-red text-stamp-red'
       }`}
     >
