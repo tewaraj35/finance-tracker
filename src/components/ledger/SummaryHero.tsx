@@ -27,7 +27,9 @@ export function SummaryHero({ salary, items }: SummaryHeroProps) {
       </div>
       <div className="flex justify-between items-baseline py-1">
         <span className="text-sm uppercase tracking-wide text-ink-soft">Remaining</span>
-        <span className="font-display text-3xl font-semibold text-paid">{formatCurrency(remaining)}</span>
+        <span className={`font-display text-3xl font-semibold ${remaining < 0 ? 'text-stamp-red' : 'text-paid'}`}>
+          {formatCurrency(remaining)}
+        </span>
       </div>
       <div className="h-1.5 rounded-full bg-line mt-2.5 overflow-hidden">
         <div

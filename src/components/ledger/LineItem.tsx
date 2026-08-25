@@ -24,7 +24,10 @@ export function LineItemRow({ item, onToggleStatus, onAmountChange }: LineItemRo
             type="number"
             step="0.01"
             defaultValue={item.amount}
-            onBlur={(event) => onAmountChange(item.id, Number(event.target.value))}
+            onBlur={(event) => {
+              const amount = Number(event.target.value)
+              if (Number.isFinite(amount)) onAmountChange(item.id, amount)
+            }}
             className="font-mono text-sm w-20 text-right bg-transparent border-b border-transparent focus:border-line focus-visible:ring-2 focus-visible:ring-brass"
           />
         </label>

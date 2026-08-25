@@ -13,7 +13,22 @@ describe('LoginForm', () => {
     await user.type(screen.getByLabelText(/password/i), 'hunter2')
     await user.click(screen.getByRole('button', { name: /^sign in$/i }))
 
-    expect(onSubmit).toHaveBeenCalledWith('test@example.com', 'hunter2')
+    expect(onSubmit).toHaveBeenCalledWith('test@example.com', 'hunter2', 'signin')
+  })
+
+  it('switches to sign-up mode and submits with the signup intent', async () => {
+    const onSubmit = vi.fn()
+    const user = userEvent.setup()
+    render(<LoginForm onSubmit={onSubmit} onGoogleSignIn={vi.fn()} error={null} loading={false} />)
+
+    await user.click(screen.getByRole('button', { name: /need an account\? sign up/i }))
+    expect(screen.getByRole('button', { name: /^sign up$/i })).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText(/email/i), 'new@example.com')
+    await user.type(screen.getByLabelText(/password/i), 'hunter2')
+    await user.click(screen.getByRole('button', { name: /^sign up$/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith('new@example.com', 'hunter2', 'signup')
   })
 
   it('calls onGoogleSignIn when the Google button is clicked', async () => {

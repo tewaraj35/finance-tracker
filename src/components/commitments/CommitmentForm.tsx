@@ -13,10 +13,11 @@ export function CommitmentForm({ categories, initial, onSubmit, onCancel }: Comm
   const [amount, setAmount] = useState(String(initial?.amount ?? ''))
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? categories[0]?.id ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
+  const [active, setActive] = useState(initial?.active ?? true)
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    onSubmit({ name, amount: Number(amount), categoryId, description, active: true })
+    onSubmit({ name, amount: Number(amount), categoryId, description, active })
   }
 
   return (
@@ -49,6 +50,10 @@ export function CommitmentForm({ categories, initial, onSubmit, onCancel }: Comm
       <label className="flex flex-col gap-1 text-sm">
         Description
         <input value={description} onChange={(event) => setDescription(event.target.value)} className="border border-line rounded px-2 py-1 bg-paper" />
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} />
+        Active
       </label>
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onCancel} className="px-3 py-1.5 text-sm">

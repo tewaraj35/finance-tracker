@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDoc,
+  runTransaction,
   setDoc,
   updateDoc,
   type CollectionReference,
@@ -42,9 +43,23 @@ export function useMonth(uid: string, monthId: string, commitments: Commitment[]
   }
 
   async function updateItems(updater: (items: LineItem[]) => LineItem[]) {
-    await ensureExists()
-    const current = month?.items ?? cloneCommitmentsToItems(commitments)
-    await updateDoc(monthDocRef(uid, monthId), { items: updater(current) })
+    // Read-modify-write inside a transaction so two rapid mutations (e.g. tapping
+    // two different PAID stamps in quick succession) can't race on stale
+    // render-time closure state — each transaction attempt reads the latest
+    // server document, not `month` from this render.
+    const ref = monthDocRef(uid, monthId)
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(ref)
+      const data = snap.exists() ? (snap.data() as MonthDoc) : undefined
+      const currentItems = data?.items ?? cloneCommitmentsToItems(commitments)
+      const salary = data?.salary ?? 0
+      if (!snap.exists()) {
+        const snapshot: MonthDoc = { id: monthId, salary, items: updater(currentItems) }
+        transaction.set(ref, snapshot)
+      } else {
+        transaction.update(ref, { items: updater(currentItems) })
+      }
+    })
   }
 
   async function toggleItemStatus(itemId: string) {

@@ -61,6 +61,7 @@ export default function CommitmentsPage() {
           {editing && (
             <div className="mt-4">
               <CommitmentForm
+                key={editing === 'new' ? 'new' : editing.id}
                 categories={categories}
                 initial={editing === 'new' ? undefined : editing}
                 onCancel={() => setEditing(null)}

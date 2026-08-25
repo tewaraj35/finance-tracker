@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { AppShell } from '../components/layout/AppShell'
@@ -27,11 +27,21 @@ export default function DashboardPage() {
   const {
     month,
     loading: monthLoading,
+    ensureExists,
     setSalary,
     toggleItemStatus,
     updateItemAmount,
     addOneOffItem,
   } = useMonth(uid, monthId, commitments)
+
+  useEffect(() => {
+    // Only create a month snapshot once commitments have actually loaded — calling
+    // this while commitmentsLoading is true would permanently create an empty
+    // snapshot (with zero commitments cloned in) that can never self-heal, since
+    // ensureMonthSnapshot is a no-op once the doc exists.
+    if (commitmentsLoading || categories.length === 0 || commitments.length === 0) return
+    void ensureExists()
+  }, [uid, monthId, commitmentsLoading, categories.length, commitments.length])
 
   if (categoriesLoading || commitmentsLoading || monthLoading) {
     return (
@@ -55,6 +65,9 @@ export default function DashboardPage() {
 
   const items = month?.items ?? []
   const subtotals = computeCategorySubtotals(items)
+  const categoryIds = new Set(categories.map((category) => category.id))
+  const uncategorizedItems = items.filter((item) => !categoryIds.has(item.categoryId))
+  const uncategorizedSubtotal = uncategorizedItems.reduce((sum, item) => sum + item.amount, 0)
 
   async function handleAddOneOff(event: FormEvent) {
     event.preventDefault()
@@ -83,7 +96,10 @@ export default function DashboardPage() {
           <input
             type="number"
             defaultValue={month?.salary ?? 0}
-            onBlur={(event) => setSalary(Number(event.target.value))}
+            onBlur={(event) => {
+              const salary = Number(event.target.value)
+              if (Number.isFinite(salary)) setSalary(salary)
+            }}
             className="font-mono border border-line rounded px-2 py-1 w-32 text-right bg-paper"
           />
         </label>
@@ -97,6 +113,16 @@ export default function DashboardPage() {
             onAmountChange={updateItemAmount}
           />
         ))}
+        {uncategorizedItems.length > 0 && (
+          <LedgerSection
+            key="uncategorized"
+            categoryName="Uncategorized"
+            items={uncategorizedItems}
+            subtotal={uncategorizedSubtotal}
+            onToggleStatus={toggleItemStatus}
+            onAmountChange={updateItemAmount}
+          />
+        )}
 
         <div className="pt-4">
           {!showAddItem ? (

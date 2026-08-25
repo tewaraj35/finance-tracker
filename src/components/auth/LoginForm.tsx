@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 
 export interface LoginFormProps {
-  onSubmit: (email: string, password: string) => void
+  onSubmit: (email: string, password: string, mode: 'signin' | 'signup') => void
   onGoogleSignIn: () => void
   error: string | null
   loading: boolean
@@ -10,10 +10,11 @@ export interface LoginFormProps {
 export function LoginForm({ onSubmit, onGoogleSignIn, error, loading }: LoginFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    onSubmit(email, password)
+    onSubmit(email, password, mode)
   }
 
   return (
@@ -45,7 +46,7 @@ export function LoginForm({ onSubmit, onGoogleSignIn, error, loading }: LoginFor
         disabled={loading}
         className="bg-paid text-paper py-2 rounded font-medium disabled:opacity-50"
       >
-        Sign in
+        {mode === 'signin' ? 'Sign in' : 'Sign up'}
       </button>
       <button
         type="button"
@@ -53,6 +54,13 @@ export function LoginForm({ onSubmit, onGoogleSignIn, error, loading }: LoginFor
         className="border border-line py-2 rounded font-medium"
       >
         Sign in with Google
+      </button>
+      <button
+        type="button"
+        onClick={() => setMode((current) => (current === 'signin' ? 'signup' : 'signin'))}
+        className="text-sm text-brass"
+      >
+        {mode === 'signin' ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
       </button>
     </form>
   )

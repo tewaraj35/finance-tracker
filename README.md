@@ -9,9 +9,10 @@ Tailwind, and Firebase.
 1. Create a Firebase project at https://console.firebase.google.com.
 2. Enable **Authentication** → Email/Password and Google sign-in providers.
 3. Create a **Firestore** database (production mode).
-4. Copy `.env.example` to `.env` and fill in your Firebase project's web app config values.
-5. `npm install`
-6. `npm run dev`
+4. Publish the security rules in [`firestore.rules`](./firestore.rules): paste them into Firebase Console → Firestore Database → Rules → Publish (or deploy with the Firebase CLI if you have one set up). Without this step Firestore stays in default-deny mode and the app cannot read or write any data.
+5. Copy `.env.example` to `.env` and fill in your Firebase project's web app config values.
+6. `npm install`
+7. `npm run dev`
 
 ## Testing
 
