@@ -1659,11 +1659,13 @@ git commit -m "feat: add categories Firestore hook"
 
 No automated test (Firestore-backed, per spec's testing scope) — verify manually in Step 3.
 
+**Note on `idField`:** the installed `react-firebase-hooks` version (5.1.1) does not support an `idField` option on `useCollectionData` — its `IDOptions<T>` type only has `snapshotOptions`, and its runtime implementation builds each item from `doc.data()` alone with no id attached at all. A `Commitment`'s `id` only ever exists as Firestore's auto-generated document ID (never as data written into the document body, since `addCommitment` calls `addDoc(commitmentsRef(uid), input)` with `input: Omit<Commitment, 'id'>`). So this hook uses `useCollection` (which exposes the raw `QuerySnapshot`, giving access to each `doc.id`) instead of `useCollectionData`, and builds the `Commitment[]` array by hand.
+
 - [ ] **Step 1: Implement `src/data/commitments.ts`**
 
 ```ts
 import { addDoc, collection, deleteDoc, doc, updateDoc, type CollectionReference } from 'firebase/firestore'
-import { useCollectionData } from 'react-firebase-hooks/firestore'
+import { useCollection } from 'react-firebase-hooks/firestore'
 import { db } from '../firebase/config'
 import type { Commitment } from '../types/models'
 
@@ -1672,8 +1674,9 @@ function commitmentsRef(uid: string) {
 }
 
 export function useCommitments(uid: string) {
-  const typedRef = commitmentsRef(uid) as unknown as CollectionReference<Commitment>
-  const [commitments, loading, error] = useCollectionData<Commitment>(typedRef, { idField: 'id' })
+  const typedRef = commitmentsRef(uid) as unknown as CollectionReference<Omit<Commitment, 'id'>>
+  const [snapshot, loading, error] = useCollection(typedRef)
+  const commitments: Commitment[] = snapshot?.docs.map((d) => ({ id: d.id, ...d.data() })) ?? []
 
   async function addCommitment(input: Omit<Commitment, 'id'>) {
     await addDoc(commitmentsRef(uid), input)
@@ -1687,7 +1690,7 @@ export function useCommitments(uid: string) {
     await deleteDoc(doc(db, 'users', uid, 'commitments', id))
   }
 
-  return { commitments: commitments ?? [], loading, error, addCommitment, updateCommitment, deleteCommitment }
+  return { commitments, loading, error, addCommitment, updateCommitment, deleteCommitment }
 }
 ```
 
@@ -1719,6 +1722,8 @@ git commit -m "feat: add commitments Firestore hook"
 - Produces: `useMonth(uid: string, monthId: string, commitments: Commitment[]): { month: MonthDoc | null; loading: boolean; error: Error | undefined; setSalary(amount: number): Promise<void>; toggleItemStatus(itemId: string): Promise<void>; updateItemAmount(itemId: string, amount: number): Promise<void>; addOneOffItem(input: { name: string; categoryId: string; amount: number; description: string }): Promise<void> }`, `useMonthsHistory(uid: string): { months: MonthDoc[]; loading: boolean; error: Error | undefined }` — consumed by `DashboardPage` (Task 14) and `HistoryPage` (Task 16).
 
 No automated test (Firestore-backed) — the snapshot-cloning logic it depends on (`cloneCommitmentsToItems`) is already unit tested in Task 3. Verify manually in Step 3.
+
+**Note on `idField`:** as in Task 12, the installed `react-firebase-hooks` (5.1.1) has no `idField` option. Unlike `Category`/`Commitment`, though, `MonthDoc.id` is genuinely written into the document body itself (`ensureMonthSnapshot` below sets `id: monthId` as a real field before calling `setDoc`), so `useCollectionData`/`useDocumentData` recover it correctly from `.data()` alone with no extra wiring needed — the fix here is simply to not pass the unsupported `idField` option at all.
 
 - [ ] **Step 1: Implement `src/data/months.ts`**
 
@@ -1796,7 +1801,7 @@ export function useMonth(uid: string, monthId: string, commitments: Commitment[]
 
 export function useMonthsHistory(uid: string) {
   const typedRef = monthsRef(uid) as unknown as CollectionReference<MonthDoc>
-  const [months, loading, error] = useCollectionData<MonthDoc>(typedRef, { idField: 'id' })
+  const [months, loading, error] = useCollectionData<MonthDoc>(typedRef)
   return { months: months ?? [], loading, error }
 }
 ```
