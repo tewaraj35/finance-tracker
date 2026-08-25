@@ -5,7 +5,9 @@ dist/
 .superpowers/
 .worktrees/
 *.log
-*.tsbuildinfo
-*.d.ts
-vite.config.js
-tailwind.config.js
+/tsconfig.tsbuildinfo
+/tsconfig.node.tsbuildinfo
+/vite.config.d.ts
+/tailwind.config.d.ts
+/vite.config.js
+/tailwind.config.js
