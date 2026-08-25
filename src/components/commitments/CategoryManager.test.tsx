@@ -12,8 +12,8 @@ const categories: Category[] = [
 describe('CategoryManager', () => {
   it('renders each category name', () => {
     render(<CategoryManager categories={categories} onAdd={vi.fn()} onRename={vi.fn()} onDelete={vi.fn()} onReorder={vi.fn()} />)
-    expect(screen.getByText('Bank Loans')).toBeInTheDocument()
-    expect(screen.getByText('Bills')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Bank Loans')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Bills')).toBeInTheDocument()
   })
 
   it('calls onAdd with the typed name when the add form is submitted', async () => {

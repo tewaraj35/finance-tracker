@@ -44,7 +44,6 @@ export function CategoryManager({ categories, onAdd, onRename, onDelete, onReord
               ↓
             </button>
           </div>
-          <span className="sr-only">{category.name}</span>
           <input
             aria-label={`Rename ${category.name}`}
             defaultValue={category.name}
